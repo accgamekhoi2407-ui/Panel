@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlueStacks Config Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;800&display=swap');
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2333;
+    --border: #30363d; --accent: #00e5a0; --accent2: #00aaff;
+    --text: #e6edf3; --text-muted: #7d8590; --on: #00e5a0; --off: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; min-height: 100vh; padding: 20px 16px; }
+
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .logo { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: #000; flex-shrink: 0; }
+  h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--accent); letter-spacing: -0.5px; }
+  h1 span { color: var(--text-muted); font-weight: 400; font-size: 13px; display: block; margin-top: 2px; }
+
+  /* MASTER TOGGLE BAR */
+  .master-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 16px;
+    box-shadow: 0 0 12px rgba(0,229,160,0.08);
+  }
+  .master-bar-left { display: flex; flex-direction: column; gap: 3px; }
+  .master-bar-left strong { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .master-bar-left small { font-size: 11px; color: var(--text-muted); }
+  .master-bar-right { display: flex; align-items: center; gap: 10px; }
+  .master-status { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 1px; }
+  .master-status.on { color: var(--on); } .master-status.off { color: var(--off); }
+
+  /* BIG TOGGLE */
+  .big-toggle { position: relative; width: 58px; height: 30px; flex-shrink: 0; }
+  .big-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .big-slider { position: absolute; inset: 0; background: #30363d; border-radius: 99px; cursor: pointer; transition: background 0.25s; }
+  .big-slider::before { content: ''; position: absolute; width: 22px; height: 22px; left: 4px; top: 4px; background: #fff; border-radius: 50%; transition: transform 0.25s; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+  .big-toggle input:checked + .big-slider { background: var(--accent); }
+  .big-toggle input:checked + .big-slider::before { transform: translateX(28px); }
+
+  /* SEARCH */
+  .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-bar input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--text-muted); }
+
+  /* SECTION */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .section:hover { border-color: #444c56; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; gap: 10px; }
+  .section-header:hover { background: var(--surface2); }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; color: var(--accent2); flex: 1; }
+  .section-count { font-size: 11px; color: var(--text-muted); background: var(--surface2); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); }
+  .chevron { color: var(--text-muted); font-size: 12px; transition: transform 0.2s; }
+  .section.open .chevron { transform: rotate(90deg); }
+  .section-body { display: none; border-top: 1px solid var(--border); }
+  .section.open .section-body { display: block; }
+
+  /* ROWS */
+  .config-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #21262d; transition: background 0.15s; }
+  .config-row:last-child { border-bottom: none; }
+  .config-row:hover { background: var(--surface2); }
+  .config-key { font-size: 12px; color: var(--accent); min-width: 180px; flex-shrink: 0; padding-top: 2px; word-break: break-all; }
+  .config-value { font-size: 12px; color: var(--text); flex: 1; word-break: break-all; line-height: 1.6; }
+  .config-value.truncated { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; cursor: pointer; }
+  .config-value.truncated:hover { white-space: normal; overflow: visible; background: var(--surface2); position: relative; z-index: 2; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); max-width: none; }
+
+  /* SMALL TOGGLE */
+  .toggle-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .toggle { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .slider { position: absolute; inset: 0; background: #30363d; border-radius: 99px; cursor: pointer; transition: background 0.2s; }
+  .slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .slider { background: var(--accent); }
+  .toggle input:checked + .slider::before { transform: translateX(18px); }
+  .toggle-label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+  .toggle-label.on { color: var(--on); } .toggle-label.off { color: var(--off); }
+
+  /* BADGES */
+  .type-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; flex-shrink: 0; margin-top: 3px; letter-spacing: 0.3px; }
+  .type-dword { background: #1f3a2b; color: #4ac271; border: 1px solid #2a5c3d; }
+  .type-string { background: #1a2f4a; color: #58a6ff; border: 1px solid #1f4070; }
+  .type-json { background: #3d2a1f; color: #f0883e; border: 1px solid #5c3d1f; }
+  .type-hex { background: #2d1f3d; color: #bc8cff; border: 1px solid #4a2d5c; }
+
+  .no-results { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; display: none; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BS</div>
+  <div>
+    <h1>BlueStacks Config <span>Registry Viewer — HKEY_LOCAL_MACHINE\SOFTWARE\BlueStacks</span></h1>
+  </div>
+</header>
+
+<!-- MASTER TOGGLE -->
+<div class="master-bar">
+  <div class="master-bar-left">
+    <strong>⚡ Bật / Tắt tất cả</strong>
+    <small id="masterCount">0 toggle đang bật</small>
+  </div>
+  <div class="master-bar-right">
+    <span class="master-status off" id="masterStatus">OFF</span>
+    <label class="big-toggle">
+      <input type="checkbox" id="masterToggle" onchange="toggleAll(this)">
+      <span class="big-slider"></span>
+    </label>
+  </div>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="🔍  Tìm kiếm khóa hoặc giá trị...">
+</div>
+
+<div id="configContainer"></div>
+<div class="no-results" id="noResults">Không tìm thấy kết quả nào.</div>
+
+<script>
+const data = {
+  "Cài đặt chung": [
+    { key: "CampaignMD5", type: "string", value: "b8508aa7b05669668bdcde5c1839df38" },
+    { key: "UserSelectedLocale", type: "string", value: "vi-VN" },
+    { key: "Geo", type: "string", value: "vn" },
+    { key: "WebAppVersion", type: "string", value: "1.171.0" },
+    { key: "BossKey", type: "string", value: "Ctrl + Shift + X" },
+    { key: "ClientInstallDir", type: "string", value: "C:\\ProgramData\\BlueStacks\\Client" },
+    { key: "EngineDataDir", type: "string", value: "C:\\ProgramData\\BlueStacks\\Engine" },
+    { key: "FirstAppLaunchedState", type: "string", value: "Launched" },
+    { key: "DeviceProfileFromCloud", type: "string", value: "optr" },
+  ],
+  "Hiển thị & Giao diện": [
+    { key: "ShowKeyControlsOverlay", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "FrontendWidth", type: "dword", value: "0x0000026b (619 px)" },
+    { key: "FrontendHeight", type: "dword", value: "0x0000015b (347 px)" },
+    { key: "IsShowRibbonNotification", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "IsShowToastNotification", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "IsShowGamepadDesktopNotification", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+  ],
+  "Hiệu suất & Boot": [
+    { key: "AvgBootTime", type: "dword", value: "0x0000299e (10654 ms)" },
+    { key: "NoOfBootCompleted", type: "dword", value: "0x00000008 (8 lần)" },
+    { key: "HomeHtmlErrorHandling", type: "dword", value: "0x00000001", toggle: true, toggleValue: true },
+    { key: "IsClientFirstLaunch", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+  ],
+  "Cài đặt hệ thống": [
+    { key: "Oem", type: "string", value: "bgp" },
+    { key: "CurrentEngine", type: "string", value: "plus" },
+    { key: "InstallID", type: "string", value: "360d755c-80bb-4cb2-ab29-41e24b06a635" },
+    { key: "SystemStats", type: "dword", value: "0x00000001", toggle: true, toggleValue: true },
+    { key: "SystemInfoStats2", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "GLES3", type: "dword", value: "0x00000001", toggle: true, toggleValue: true },
+    { key: "ForceDedicatedGPU", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "IsCacodeValid", type: "dword", value: "0x00000001", toggle: true, toggleValue: true },
+    { key: "UpdateBstConfig", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "IsNotificationSoundsActive", type: "dword", value: "0x00000000", toggle: true, toggleValue: false },
+    { key: "IsNotificationModeAlwaysOn", type: "dword", value: "0x00000001", toggle: true, toggleValue: true },
+    { key: "AvailableGPUDetails", type: "string", value: "Intel(R) HD Graphics 630" },
+  ],
+  "DeviceCaps (JSON)": [
+    { key: "engine_enabled", type: "json", value: "plus" },
+    { key: "cpu_hvm", type: "json", value: "True", toggle: true, toggleValue: true },
+    { key: "bios_hvm", type: "json", value: "True", toggle: true, toggleValue: true },
+  ],
+  "Thông báo": [
+    { key: "Desktop Notifications", type: "string", value: "MutedForever — 2023-03-22", toggle: true, toggleValue: false },
+    { key: "BlueStacks", type: "string", value: "NotMuted — 2023-03-23", toggle: true, toggleValue: true },
+    { key: "Free Fire", type: "string", value: "NotMuted — 2023-03-22", toggle: true, toggleValue: true },
+    { key: "Color Changer Pro", type: "string", value: "MutedForever — 2023-03-22", toggle: true, toggleValue: false },
+    { key: "SuperSU", type: "string", value: "MutedForever — 2023-03-22", toggle: true, toggleValue: false },
+  ],
+  "Ứng dụng đã cài": [
+    { key: "com.android.vending (Google Play)", type: "string", value: "Onboarding: ✓ | Keymapping: ✗" },
+    { key: "com.dts.freefireth (Free Fire)", type: "string", value: "Onboarding: ✓ | Keymapping: ✓ | Cài: 03/22/2023" },
+    { key: "eu.chainfire.supersu (SuperSU)", type: "string", value: "Onboarding: ✗ | Cài: 03/22/2023" },
+  ],
+  "Engine Versions (JSON)": [
+    { key: "Nougat 32-bit", type: "json", value: "v4.280.1.1002 — oem: bgp — abi: 15" },
+    { key: "Nougat 64-bit", type: "json", value: "v4.280.4.4002 — oem: bgp64 — abi: 15" },
+    { key: "Lollipop 32-bit", type: "json", value: "v4.220.0.8005 — oem: bgp_lollipop — abi: 15" },
+  ],
+  "HEX Data": [
+    { key: "VmList", type: "hex", value: '41 00 6e 00 64 00 ... → "Android"' },
+    { key: "DefaultSidebarElements", type: "hex", value: "sidebar_fullscreen, sidebar_volume, sidebar_controls, sidebar_macro, sidebar_screenshot, sidebar_media_folder..." },
+  ],
+};
+
+const container = document.getElementById('configContainer');
+
+Object.entries(data).forEach(([sectionName, rows]) => {
+  const section = document.createElement('div');
+  section.className = 'section';
+  section.dataset.section = sectionName;
+
+  section.innerHTML = `
+    <div class="section-header" onclick="toggleSection(this)">
+      <span class="section-title">${sectionName}</span>
+      <span class="section-count">${rows.length} khóa</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="section-body">
+      ${rows.map((row, i) => {
+        const isLong = row.value.length > 70;
+        const valueClass = isLong ? 'config-value truncated' : 'config-value';
+        let rightContent = '';
+        if (row.toggle !== undefined) {
+          const checked = row.toggleValue ? 'checked' : '';
+          const labelText = row.toggleValue ? 'ON' : 'OFF';
+          const labelClass = row.toggleValue ? 'on' : 'off';
+          rightContent = `<div class="toggle-wrap">
+            <span class="toggle-label ${labelClass}" id="lbl-${i}-${sectionName.replace(/\s/g,'')}">${labelText}</span>
+            <label class="toggle">
+              <input type="checkbox" class="row-toggle" ${checked} onchange="handleToggle(this)">
+              <span class="slider"></span>
+            </label>
+          </div>`;
+        }
+        return `<div class="config-row" data-key="${row.key.toLowerCase()}" data-val="${row.value.toLowerCase()}">
+          <span class="type-badge type-${row.type}">${row.type.toUpperCase()}</span>
+          <span class="config-key">${row.key}</span>
+          <span class="${valueClass}">${row.value}</span>
+          ${rightContent}
+        </div>`;
+      }).join('')}
+    </div>`;
+  container.appendChild(section);
+});
+
+document.querySelector('.section').classList.add('open');
+updateMasterCount();
+
+function toggleSection(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+function handleToggle(input) {
+  const wrap = input.closest('.toggle-wrap');
+  const label = wrap.querySelector('.toggle-label');
+  if (input.checked) {
+    label.textContent = 'ON'; label.className = 'toggle-label on';
+  } else {
+    label.textContent = 'OFF'; label.className = 'toggle-label off';
+  }
+  updateMasterCount();
+}
+
+function updateMasterCount() {
+  const all = document.querySelectorAll('.row-toggle');
+  const onCount = [...all].filter(t => t.checked).length;
+  document.getElementById('masterCount').textContent = `${onCount} / ${all.length} toggle đang bật`;
+
+  const masterEl = document.getElementById('masterStatus');
+  const masterInput = document.getElementById('masterToggle');
+  if (onCount === all.length && all.length > 0) {
+    masterEl.textContent = 'ON'; masterEl.className = 'master-status on';
+    masterInput.checked = true;
+  } else if (onCount === 0) {
+    masterEl.textContent = 'OFF'; masterEl.className = 'master-status off';
+    masterInput.checked = false;
+  } else {
+    masterEl.textContent = '—'; masterEl.className = 'master-status off';
+  }
+}
+
+function toggleAll(masterInput) {
+  const all = document.querySelectorAll('.row-toggle');
+  all.forEach(t => {
+    t.checked = masterInput.checked;
+    const wrap = t.closest('.toggle-wrap');
+    const label = wrap.querySelector('.toggle-label');
+    if (masterInput.checked) {
+      label.textContent = 'ON'; label.className = 'toggle-label on';
+    } else {
+      label.textContent = 'OFF'; label.className = 'toggle-label off';
+    }
+  });
+  const masterEl = document.getElementById('masterStatus');
+  if (masterInput.checked) {
+    masterEl.textContent = 'ON'; masterEl.className = 'master-status on';
+  } else {
+    masterEl.textContent = 'OFF'; masterEl.className = 'master-status off';
+  }
+  updateMasterCount();
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  let anyVisible = false;
+  document.querySelectorAll('.section').forEach(sec => {
+    let secVisible = false;
+    sec.querySelectorAll('.config-row').forEach(row => {
+      const match = !q || row.dataset.key.includes(q) || row.dataset.val.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) secVisible = true;
+    });
+    sec.style.display = secVisible ? '' : 'none';
+    if (secVisible) { anyVisible = true; if (q) sec.classList.add('open'); }
+  });
+  document.getElementById('noResults').style.display = anyVisible ? 'none' : 'block';
+});
+</script>
+</body>
+</html>
